@@ -2,6 +2,7 @@ import { Category } from "../sehemas/book.schema";
 import { IsEnum, IsNotEmpty, IsNumber, IsString } from "class-validator";
 
 export class CreateBookDto {
+
     @IsNotEmpty()
     @IsString()
     readonly title: string;
@@ -18,8 +19,8 @@ export class CreateBookDto {
     @IsNumber()
     readonly price: number;
     
-    // @IsNotEmpty()
-    // @IsEnum(Category, { message: 'Please enter correct category' })
+    @IsNotEmpty()
+    @IsEnum(Category, { message: 'Please enter correct category' })
     readonly category: Category;
 }
 
