@@ -1,9 +1,10 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, Req, UnauthorizedException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import * as mongoose from 'mongoose';
 import { Book } from './sehemas/book.schema';
 import { Query } from 'express-serve-static-core';
 import { User } from '../auth/schemas/user.schema';
+import { Request } from 'express';
 
 @Injectable()
 export class BookService {
@@ -12,11 +13,23 @@ export class BookService {
         private bookModel: mongoose.Model<Book>
     ) { }
 
-    async findAll(query: Query): Promise<Book[]> {
+    async findAll(query: Query, req: Request): Promise<Book[]> {
 
-        const resPerPage = 2;
+        const resPerPage = 10;
         const currentPage = Number(query.page) || 1;
         const skip = resPerPage * (currentPage - 1);
+
+        let condition: any = {};
+
+        if (req.user) {
+            condition = {
+                ...condition,
+                user: req.user 
+            };
+        } else {
+            
+            throw new UnauthorizedException('User not logged in');
+        }
 
         const keyword = query.keyword ? {
             title: {
@@ -25,7 +38,10 @@ export class BookService {
             }
         } : {}
 
-        const books = await this.bookModel.find(keyword).limit(resPerPage).skip(skip);
+        const books = await this.bookModel.find({
+            ...condition,
+            ...keyword
+        }).limit(resPerPage).skip(skip);
         return books;
     }
 
@@ -54,6 +70,10 @@ export class BookService {
     };
 
     async updateById(id: string, book: Book): Promise<Book> {
+        const bookUpdate = await this.bookModel.findById(id);
+        if (!bookUpdate) {
+            throw new NotFoundException('Book id deleted.')
+        }
         return await this.bookModel.findByIdAndUpdate(id, book, {
             new: true,
             runValidators: true,
@@ -61,6 +81,11 @@ export class BookService {
     };
 
     async deleteById(id: string): Promise<Book> {
+        
+        const bookDelete = await this.bookModel.findById(id);
+        if (!bookDelete) {
+            throw new NotFoundException('Book id not found.')
+        }
         return await this.bookModel.findByIdAndDelete(id);
     };
 }
